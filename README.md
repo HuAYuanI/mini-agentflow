@@ -13,8 +13,9 @@
 - 引用合法性校验：引用变量必须来源于输入或上游节点输出
 - 图结构增强校验：唯一 START/END、重复边/自环检测、START 可达性、END 可达性
 - 并行执行引擎：`ParallelWorkflowEngine`（`CompletableFuture` + `AtomicInteger`）
+- TTL 上下文传递：`TransmittableThreadLocal` + `TtlRunnable`（线程池场景上下文不丢失）
 - REST API：`POST /api/workflow/execute`
-- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证
+- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证
 
 ## 快速启动
 
@@ -56,7 +57,7 @@ curl -X POST http://localhost:18080/api/workflow/execute \
 
 - D1-D2：串行执行引擎 + DAG 校验 + 模式解耦
 - D3：并行引擎（`CompletableFuture` + `AtomicInteger`）
-- D4：TTL 上下文传递（`TransmittableThreadLocal`）
+- D4：TTL 上下文传递（`TransmittableThreadLocal` + `TtlRunnable`）
 - D5-D6：超时/重试/中断/错误分支策略
 - D7-D8：SSE 全链路生命周期事件推送
 - D9：Spring AI + Prompt 模板 + 历史窗口

@@ -9,8 +9,11 @@ import com.example.miniagentflow.engine.executor.EndNodeExecutor;
 import com.example.miniagentflow.engine.executor.LlmNodeExecutor;
 import com.example.miniagentflow.engine.executor.PluginNodeExecutor;
 import com.example.miniagentflow.engine.executor.StartNodeExecutor;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -60,5 +63,67 @@ class ParallelWorkflowEngineTest {
         Assertions.assertEquals("SUCCESS", parallelResult.getStatus());
         Assertions.assertTrue(parallelElapsed + 120 < serialElapsed);
         Assertions.assertTrue(String.valueOf(parallelResult.getContextSnapshot().get("finalOutput")).contains("PLUGIN_OK"));
+    }
+
+    @Test
+    void shouldPropagateExecutionIdAcrossParallelWorkers() {
+        VariableResolver variableResolver = new VariableResolver();
+        Set<String> executionIds = ConcurrentHashMap.newKeySet();
+        NodeExecutorRegistry registry = new NodeExecutorRegistry(List.of(
+                new StartNodeExecutor(variableResolver),
+                new TtlAwareLlmNodeExecutor(variableResolver, executionIds),
+                new EndNodeExecutor(variableResolver)
+        ));
+        WorkflowValidator validator = new WorkflowValidator(variableResolver);
+        ParallelWorkflowEngine parallelWorkflowEngine = new ParallelWorkflowEngine(validator, registry, 4);
+
+        WorkflowDefinition workflow = WorkflowDefinition.builder()
+                .nodes(List.of(
+                        WorkflowNode.builder().id("start").type(NodeType.START).config(Map.of("outputKey", "raw")).build(),
+                        WorkflowNode.builder().id("llmA").type(NodeType.LLM)
+                                .config(Map.of("prompt", "A:${raw}", "outputKey", "a", "delayMs", 200)).build(),
+                        WorkflowNode.builder().id("llmB").type(NodeType.LLM)
+                                .config(Map.of("prompt", "B:${raw}", "outputKey", "b", "delayMs", 200)).build(),
+                        WorkflowNode.builder().id("end").type(NodeType.END)
+                                .config(Map.of("result", "${a}-${b}")).build()
+                ))
+                .edges(List.of(
+                        WorkflowEdge.builder().from("start").to("llmA").build(),
+                        WorkflowEdge.builder().from("start").to("llmB").build(),
+                        WorkflowEdge.builder().from("llmA").to("end").build(),
+                        WorkflowEdge.builder().from("llmB").to("end").build()
+                ))
+                .build();
+
+        WorkflowRunResult result = parallelWorkflowEngine.run(workflow, Map.of("input", "hello"));
+        Assertions.assertEquals("SUCCESS", result.getStatus());
+        Assertions.assertEquals(1, executionIds.size());
+        Assertions.assertEquals(result.getContextSnapshot().get("executionId"), executionIds.iterator().next());
+        Assertions.assertNull(WorkflowThreadContextHolder.get());
+    }
+
+    private static class TtlAwareLlmNodeExecutor extends LlmNodeExecutor {
+
+        private final Set<String> executionIds;
+
+        TtlAwareLlmNodeExecutor(VariableResolver variableResolver, Set<String> executionIds) {
+            super(variableResolver);
+            this.executionIds = executionIds;
+        }
+
+        @Override
+        protected Map<String, Object> doExecute(NodeExecutionContext context, WorkflowNode node) {
+            WorkflowThreadContext threadContext = WorkflowThreadContextHolder.get();
+            Assertions.assertNotNull(threadContext);
+            Assertions.assertNotNull(threadContext.getExecutionId());
+            executionIds.add(threadContext.getExecutionId());
+
+            Map<String, Object> output = new HashMap<>();
+            Map<String, Object> config = node.getConfig();
+            String outputKey = String.valueOf(config.getOrDefault("outputKey", "llmOutput"));
+            String prompt = String.valueOf(config.getOrDefault("prompt", "default"));
+            output.put(outputKey, "MOCK_LLM:" + prompt);
+            return output;
+        }
     }
 }
