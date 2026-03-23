@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D3）
+## 当前已完成（D1-D5）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -14,8 +14,12 @@
 - 图结构增强校验：唯一 START/END、重复边/自环检测、START 可达性、END 可达性
 - 并行执行引擎：`ParallelWorkflowEngine`（`CompletableFuture` + `AtomicInteger`）
 - TTL 上下文传递：`TransmittableThreadLocal` + `TtlRunnable`（线程池场景上下文不丢失）
+- 节点超时控制：`timeoutMs`
+- 节点重试机制：`retryTimes`
+- 节点失败策略：`errorStrategy=INTERRUPT|CONTINUE|ERROR_BRANCH`
+- 错误分支跳转：`errorNext`（仅 `ERROR_BRANCH`）
 - REST API：`POST /api/workflow/execute`
-- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证
+- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证
 
 ## 快速启动
 
@@ -58,7 +62,8 @@ curl -X POST http://localhost:18080/api/workflow/execute \
 - D1-D2：串行执行引擎 + DAG 校验 + 模式解耦
 - D3：并行引擎（`CompletableFuture` + `AtomicInteger`）
 - D4：TTL 上下文传递（`TransmittableThreadLocal` + `TtlRunnable`）
-- D5-D6：超时/重试/中断/错误分支策略
+- D5：超时/重试/中断/错误分支策略
+- D6：SSE 前的执行事件标准化（进行中）
 - D7-D8：SSE 全链路生命周期事件推送
 - D9：Spring AI + Prompt 模板 + 历史窗口
 - D10：`@DistributedLock` + AOP + SpEL + 简历沉淀

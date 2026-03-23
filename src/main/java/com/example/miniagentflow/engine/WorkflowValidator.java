@@ -1,5 +1,6 @@
 package com.example.miniagentflow.engine;
 
+import com.example.miniagentflow.domain.ErrorStrategyEnum;
 import com.example.miniagentflow.domain.NodeType;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowEdge;
@@ -15,6 +16,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Queue;
 import java.util.Set;
+import java.util.Locale;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -111,6 +113,7 @@ public class WorkflowValidator {
         ensureNodeTypeGraphConstraints(nodeMap, originalInDegree, outDegree);
         ensureReachability(nodeMap, adjacency, reverseAdjacency);
         validateVariableReferences(nodeMap, topologicalOrder, reverseAdjacency, inputs);
+        validateErrorStrategies(nodeMap, adjacency);
         return topologicalOrder;
     }
 
@@ -211,5 +214,40 @@ public class WorkflowValidator {
             case PLUGIN -> "pluginOutput";
             case END -> "finalOutput";
         };
+    }
+
+    private void validateErrorStrategies(Map<String, WorkflowNode> nodeMap, Map<String, List<String>> adjacency) {
+        for (WorkflowNode node : nodeMap.values()) {
+            ErrorStrategyEnum strategy = parseStrategy(node.getConfig().get("errorStrategy"));
+            if (strategy != ErrorStrategyEnum.ERROR_BRANCH) {
+                continue;
+            }
+            Object errorNextObj = node.getConfig().get("errorNext");
+            if (!(errorNextObj instanceof String errorNext) || errorNext.isBlank()) {
+                throw new WorkflowValidationException("Node " + node.getId() + " missing errorNext for ERROR_BRANCH");
+            }
+            if (!nodeMap.containsKey(errorNext)) {
+                throw new WorkflowValidationException("Node " + node.getId() + " errorNext not found: " + errorNext);
+            }
+            if (!adjacency.get(node.getId()).contains(errorNext)) {
+                throw new WorkflowValidationException(
+                        "Node " + node.getId() + " errorNext must be a direct downstream node: " + errorNext);
+            }
+        }
+    }
+
+    private ErrorStrategyEnum parseStrategy(Object strategyObj) {
+        if (strategyObj == null) {
+            return ErrorStrategyEnum.INTERRUPT;
+        }
+        String raw = String.valueOf(strategyObj).trim();
+        if (raw.isEmpty()) {
+            return ErrorStrategyEnum.INTERRUPT;
+        }
+        try {
+            return ErrorStrategyEnum.valueOf(raw.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException illegalArgumentException) {
+            throw new WorkflowValidationException("Unknown errorStrategy: " + raw);
+        }
     }
 }

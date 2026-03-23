@@ -89,4 +89,23 @@ class WorkflowValidatorTest {
 
         Assertions.assertThrows(WorkflowValidationException.class, () -> workflowValidator.validateAndSort(workflow, Map.of("input", "hello")));
     }
+
+    @Test
+    void shouldRejectErrorBranchStrategyWithoutErrorNext() {
+        WorkflowDefinition workflow = WorkflowDefinition.builder()
+                .nodes(List.of(
+                        WorkflowNode.builder().id("start").type(NodeType.START).config(Map.of("outputKey", "raw")).build(),
+                        WorkflowNode.builder().id("llm").type(NodeType.LLM)
+                                .config(Map.of("prompt", "${raw}", "outputKey", "a", "errorStrategy", "ERROR_BRANCH")).build(),
+                        WorkflowNode.builder().id("end").type(NodeType.END).config(Map.of("result", "${a}")).build()
+                ))
+                .edges(List.of(
+                        WorkflowEdge.builder().from("start").to("llm").build(),
+                        WorkflowEdge.builder().from("llm").to("end").build()
+                ))
+                .build();
+
+        Assertions.assertThrows(WorkflowValidationException.class,
+                () -> workflowValidator.validateAndSort(workflow, Map.of("input", "hello")));
+    }
 }
