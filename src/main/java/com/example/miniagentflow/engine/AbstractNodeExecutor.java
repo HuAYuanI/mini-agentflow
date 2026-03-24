@@ -2,7 +2,9 @@ package com.example.miniagentflow.engine;
 
 import com.example.miniagentflow.domain.NodeRunResult;
 import com.example.miniagentflow.domain.NodeRunStatus;
+import com.example.miniagentflow.domain.WorkflowEventType;
 import com.example.miniagentflow.domain.WorkflowNode;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -26,24 +28,51 @@ public abstract class AbstractNodeExecutor implements NodeExecutor {
         Exception lastException = null; // 记录最后一次异常
 
         for (int attempt = 1; attempt <= maxAttempts; attempt++) { // 循环执行节点
+            context.publishNodeEvent(
+                    WorkflowEventType.NODE_STARTED,
+                    node,
+                    attempt,
+                    "Node execution started",
+                    buildAttemptData(timeoutMs, retryTimes, null));
             try {
                 beforeExecute(context, node); // 执行前置操作
                 Map<String, Object> output = executeWithTimeout(context, node, timeoutMs); // 执行节点逻辑
                 NodeRunResult result = NodeRunResult.success(node.getId(), output); // 创建成功结果
                 afterExecute(context, node, result); // 执行后置操作
+                context.publishNodeEvent(
+                        WorkflowEventType.NODE_COMPLETED,
+                        node,
+                        attempt,
+                        "Node execution completed",
+                        output);
                 return result; // 返回结果
             } catch (Exception ex) {
                 lastException = ex; // 记录异常，继续下一次循环
+                if (attempt < maxAttempts) {
+                    context.publishNodeEvent(
+                            WorkflowEventType.NODE_RETRYING,
+                            node,
+                            attempt,
+                            "Node execution failed, retrying",
+                            buildAttemptData(timeoutMs, retryTimes, ex.getMessage()));
+                }
             }
         }
 
         // 创建失败结果
         String errorMessage = lastException == null ? "Node execution failed" : lastException.getMessage();
-        return NodeRunResult.builder()
+        NodeRunResult failedResult = NodeRunResult.builder()
                 .nodeId(node.getId())
                 .status(NodeRunStatus.FAILED)
                 .errorMessage(errorMessage)
                 .build();
+        context.publishNodeEvent(
+                WorkflowEventType.NODE_FAILED,
+                node,
+                maxAttempts,
+                errorMessage,
+                buildAttemptData(timeoutMs, retryTimes, errorMessage));
+        return failedResult;
     }
 
     // 【执行前置操作】：节点执行前的准备工作，可由子类覆盖
@@ -108,5 +137,15 @@ public abstract class AbstractNodeExecutor implements NodeExecutor {
         } catch (NumberFormatException numberFormatException) {
             return defaultValue;
         }
+    }
+
+    private Map<String, Object> buildAttemptData(long timeoutMs, int retryTimes, String errorMessage) {
+        Map<String, Object> data = new HashMap<>();
+        data.put("timeoutMs", timeoutMs);
+        data.put("retryTimes", retryTimes);
+        if (errorMessage != null && !errorMessage.isBlank()) {
+            data.put("errorMessage", errorMessage);
+        }
+        return data;
     }
 }

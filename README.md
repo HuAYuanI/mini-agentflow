@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D5）
+## 当前已完成（D1-D6）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -18,8 +18,11 @@
 - 节点重试机制：`retryTimes`
 - 节点失败策略：`errorStrategy=INTERRUPT|CONTINUE|ERROR_BRANCH`
 - 错误分支跳转：`errorNext`（仅 `ERROR_BRANCH`）
+- 统一执行事件模型：`WorkflowExecutionEvent`
+- 统一生命周期事件：`WORKFLOW_STARTED / NODE_STARTED / NODE_RETRYING / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED`
+- 事件监听器抽象：可被内存收集器或后续 SSE 推送复用
 - REST API：`POST /api/workflow/execute`
-- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证
+- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证
 
 ## 快速启动
 
@@ -63,7 +66,7 @@ curl -X POST http://localhost:18080/api/workflow/execute \
 - D3：并行引擎（`CompletableFuture` + `AtomicInteger`）
 - D4：TTL 上下文传递（`TransmittableThreadLocal` + `TtlRunnable`）
 - D5：超时/重试/中断/错误分支策略
-- D6：SSE 前的执行事件标准化（进行中）
+- D6：SSE 前的执行事件标准化
 - D7-D8：SSE 全链路生命周期事件推送
 - D9：Spring AI + Prompt 模板 + 历史窗口
 - D10：`@DistributedLock` + AOP + SpEL + 简历沉淀

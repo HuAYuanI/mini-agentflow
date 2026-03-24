@@ -21,5 +21,8 @@ public class WorkflowRunResult {
     private List<NodeRunResult> nodeResults = new ArrayList<>();
 
     @Builder.Default
+    private List<WorkflowExecutionEvent> events = new ArrayList<>();
+
+    @Builder.Default
     private Map<String, Object> contextSnapshot = new HashMap<>();
 }

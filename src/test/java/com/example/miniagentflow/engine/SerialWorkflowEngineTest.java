@@ -3,6 +3,7 @@ package com.example.miniagentflow.engine;
 import com.example.miniagentflow.domain.NodeType;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowEdge;
+import com.example.miniagentflow.domain.WorkflowEventType;
 import com.example.miniagentflow.domain.WorkflowNode;
 import com.example.miniagentflow.domain.WorkflowRunResult;
 import com.example.miniagentflow.engine.executor.EndNodeExecutor;
@@ -45,6 +46,8 @@ class SerialWorkflowEngineTest {
         WorkflowRunResult result = engine.run(workflow, Map.of("input", "hello"));
         Assertions.assertEquals("SUCCESS", result.getStatus());
         Assertions.assertEquals(4, result.getNodeResults().size());
+        Assertions.assertEquals(WorkflowEventType.WORKFLOW_STARTED, result.getEvents().getFirst().getType());
+        Assertions.assertEquals(WorkflowEventType.WORKFLOW_COMPLETED, result.getEvents().getLast().getType());
         Assertions.assertTrue(String.valueOf(result.getContextSnapshot().get("finalOutput")).contains("PLUGIN_OK"));
     }
 
@@ -105,6 +108,10 @@ class SerialWorkflowEngineTest {
         WorkflowRunResult result = engine.run(workflow, Map.of("input", "hello"));
         Assertions.assertEquals("SUCCESS", result.getStatus());
         Assertions.assertEquals(3, attempts.get());
+        Assertions.assertTrue(result.getEvents().stream()
+                .anyMatch(event -> event.getType() == WorkflowEventType.NODE_RETRYING
+                        && "llm".equals(event.getNodeId())));
+        Assertions.assertEquals("SUCCESS", result.getEvents().getLast().getWorkflowStatus());
         Assertions.assertTrue(String.valueOf(result.getContextSnapshot().get("finalOutput"))
                 .contains("LLM_RESPONSE: retry:hello"));
     }
@@ -141,6 +148,7 @@ class SerialWorkflowEngineTest {
                 .orElseThrow()
                 .getErrorMessage()
                 .contains("timeout"));
+        Assertions.assertEquals("FAILED", result.getEvents().getLast().getWorkflowStatus());
     }
 
     @Test
@@ -172,6 +180,7 @@ class SerialWorkflowEngineTest {
         Assertions.assertEquals("PARTIAL_SUCCESS", result.getStatus());
         Assertions.assertTrue(String.valueOf(result.getContextSnapshot().get("finalOutput")).contains("fallback-result"));
         Assertions.assertEquals("llm", String.valueOf(result.getContextSnapshot().get("lastErrorNode")));
+        Assertions.assertEquals("PARTIAL_SUCCESS", result.getEvents().getLast().getWorkflowStatus());
     }
 
     private static class FlakyLlmNodeExecutor extends LlmNodeExecutor {

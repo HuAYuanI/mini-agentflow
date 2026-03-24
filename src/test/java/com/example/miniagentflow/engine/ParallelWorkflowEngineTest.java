@@ -3,6 +3,7 @@ package com.example.miniagentflow.engine;
 import com.example.miniagentflow.domain.NodeType;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowEdge;
+import com.example.miniagentflow.domain.WorkflowEventType;
 import com.example.miniagentflow.domain.WorkflowNode;
 import com.example.miniagentflow.domain.WorkflowRunResult;
 import com.example.miniagentflow.engine.executor.EndNodeExecutor;
@@ -57,6 +58,8 @@ class ParallelWorkflowEngineTest {
         Assertions.assertEquals("SUCCESS", serialResult.getStatus());
         Assertions.assertEquals("SUCCESS", parallelResult.getStatus());
         Assertions.assertEquals(serialResult.getNodeResults().size(), parallelResult.getNodeResults().size());
+        Assertions.assertEquals(WorkflowEventType.WORKFLOW_STARTED, parallelResult.getEvents().getFirst().getType());
+        Assertions.assertEquals(WorkflowEventType.WORKFLOW_COMPLETED, parallelResult.getEvents().getLast().getType());
         Assertions.assertTrue(String.valueOf(parallelResult.getContextSnapshot().get("finalOutput")).contains("PLUGIN_OK"));
     }
 
@@ -94,6 +97,7 @@ class ParallelWorkflowEngineTest {
         Assertions.assertEquals("SUCCESS", result.getStatus());
         Assertions.assertEquals(1, executionIds.size());
         Assertions.assertEquals(result.getContextSnapshot().get("executionId"), executionIds.iterator().next());
+        Assertions.assertEquals(1, result.getEvents().stream().map(event -> event.getExecutionId()).distinct().count());
         Assertions.assertNull(WorkflowThreadContextHolder.get());
     }
 
@@ -131,6 +135,7 @@ class ParallelWorkflowEngineTest {
         Assertions.assertTrue(result.getNodeResults().stream()
                 .anyMatch(nodeRunResult -> "llmFail".equals(nodeRunResult.getNodeId())
                         && nodeRunResult.getStatus().name().equals("FAILED")));
+        Assertions.assertEquals("PARTIAL_SUCCESS", result.getEvents().getLast().getWorkflowStatus());
         Assertions.assertTrue(String.valueOf(result.getContextSnapshot().get("finalOutput"))
                 .contains("LLM_RESPONSE: Y:hello"));
     }

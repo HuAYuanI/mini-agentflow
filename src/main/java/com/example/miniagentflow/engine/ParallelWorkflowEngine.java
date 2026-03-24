@@ -2,14 +2,20 @@ package com.example.miniagentflow.engine;
 
 import com.alibaba.ttl.TtlRunnable;
 import com.alibaba.ttl.threadpool.TtlExecutors;
+import com.example.miniagentflow.domain.EngineMode;
 import com.example.miniagentflow.domain.NodeRunResult;
 import com.example.miniagentflow.domain.NodeRunStatus;
 import com.example.miniagentflow.domain.WorkflowDefinition;
+import com.example.miniagentflow.domain.WorkflowEventType;
 import com.example.miniagentflow.domain.WorkflowEdge;
 import com.example.miniagentflow.domain.WorkflowNode;
 import com.example.miniagentflow.domain.WorkflowRunResult;
 import com.example.miniagentflow.engine.error.NodeErrorStrategySelector;
 import com.example.miniagentflow.engine.error.NodeFailureDecision;
+import com.example.miniagentflow.engine.event.CollectingWorkflowEventListener;
+import com.example.miniagentflow.engine.event.CompositeWorkflowEventListener;
+import com.example.miniagentflow.engine.event.NoopWorkflowEventListener;
+import com.example.miniagentflow.engine.event.WorkflowEventListener;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -57,6 +63,12 @@ public class ParallelWorkflowEngine {
 
     // 【执行工作流】：执行工作流
     public WorkflowRunResult run(WorkflowDefinition workflow, Map<String, Object> inputs) {
+        return run(workflow, inputs, NoopWorkflowEventListener.INSTANCE);
+    }
+
+    public WorkflowRunResult run(WorkflowDefinition workflow,
+            Map<String, Object> inputs,
+            WorkflowEventListener eventListener) {
         // 验证工作流并获取拓扑排序
         List<String> topologicalOrder = workflowValidator.validateAndSort(workflow, inputs);
         // 构建节点映射
@@ -66,16 +78,23 @@ public class ParallelWorkflowEngine {
         // 构建剩余依赖数
         Map<String, AtomicInteger> remainingDeps = buildRemainingDeps(workflow, nodeMap.keySet());
 
+        CollectingWorkflowEventListener collector = new CollectingWorkflowEventListener();
+        WorkflowEventListener compositeListener = CompositeWorkflowEventListener.of(collector, eventListener);
         // 初始化节点执行上下文
-        NodeExecutionContext context = new NodeExecutionContext(inputs);
+        WorkflowThreadContext threadContext = WorkflowThreadContextHolder.init(EngineMode.PARALLEL);
+        NodeExecutionContext context = new NodeExecutionContext(inputs, threadContext, compositeListener);
         // 初始化线程上下文
-        WorkflowThreadContext threadContext = WorkflowThreadContextHolder.initParallelRun();
         // 设置执行ID
         context.putVariable("executionId", threadContext.getExecutionId());
         // 设置引擎模式
         context.putVariable("engineMode", threadContext.getEngineMode());
         // 设置开始时间
         context.putVariable("startedAtMillis", threadContext.getStartedAtMillis());
+        context.publishWorkflowEvent(
+                WorkflowEventType.WORKFLOW_STARTED,
+                "RUNNING",
+                "Workflow execution started",
+                Map.of("nodeCount", nodeMap.size()));
 
         // 节点执行结果映射
         Map<String, NodeRunResult> nodeResultMap = new ConcurrentHashMap<>();
@@ -135,10 +154,16 @@ public class ParallelWorkflowEngine {
 
             // 根据中断标志和错误处理标志确定工作流状态
             String status = interrupted.get() ? "FAILED" : handledFailure.get() ? "PARTIAL_SUCCESS" : "SUCCESS";
+            context.publishWorkflowEvent(
+                    WorkflowEventType.WORKFLOW_COMPLETED,
+                    status,
+                    "Workflow execution completed",
+                    Map.of("executedNodeCount", orderedResults.size()));
             // 构建工作流运行结果
             return WorkflowRunResult.builder()
                     .status(status)
                     .nodeResults(orderedResults)
+                    .events(collector.snapshot())
                     .contextSnapshot(context.snapshotVariables())
                     .build();
         } finally {
