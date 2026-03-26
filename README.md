@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D6）
+## 当前已完成（D1-D7）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -21,8 +21,10 @@
 - 统一执行事件模型：`WorkflowExecutionEvent`
 - 统一生命周期事件：`WORKFLOW_STARTED / NODE_STARTED / NODE_RETRYING / NODE_COMPLETED / NODE_FAILED / WORKFLOW_COMPLETED`
 - 事件监听器抽象：可被内存收集器或后续 SSE 推送复用
+- SSE 流式执行接口：`POST /api/workflow/stream`
+- 基于 `SseEmitter` 的实时事件推送：节点执行事件会边执行边推送
 - REST API：`POST /api/workflow/execute`
-- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证
+- 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证、SSE 服务验证
 
 ## 快速启动
 
@@ -60,6 +62,28 @@ curl -X POST http://localhost:18080/api/workflow/execute \
   }'
 ```
 
+## SSE 调试示例
+
+```bash
+curl -N -X POST http://localhost:18080/api/workflow/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "engineMode": "SERIAL",
+    "inputs": {"input": "你好，流式输出一下"},
+    "workflow": {
+      "nodes": [
+        {"id": "start", "type": "START", "config": {"outputKey": "raw"}},
+        {"id": "llm", "type": "LLM", "config": {"prompt": "SSE:${raw}", "outputKey": "answer"}},
+        {"id": "end", "type": "END", "config": {"result": "${answer}"}}
+      ],
+      "edges": [
+        {"from": "start", "to": "llm"},
+        {"from": "llm", "to": "end"}
+      ]
+    }
+  }'
+```
+
 ## 10 天冲刺路线
 
 - D1-D2：串行执行引擎 + DAG 校验 + 模式解耦
@@ -67,6 +91,6 @@ curl -X POST http://localhost:18080/api/workflow/execute \
 - D4：TTL 上下文传递（`TransmittableThreadLocal` + `TtlRunnable`）
 - D5：超时/重试/中断/错误分支策略
 - D6：SSE 前的执行事件标准化
-- D7-D8：SSE 全链路生命周期事件推送
-- D9：Spring AI + Prompt 模板 + 历史窗口
-- D10：`@DistributedLock` + AOP + SpEL + 简历沉淀
+- D7：SSE 全链路生命周期事件推送
+- D8：Spring AI + Prompt 模板 + 历史窗口
+- D9：`@DistributedLock` + AOP + SpEL + 简历沉淀
