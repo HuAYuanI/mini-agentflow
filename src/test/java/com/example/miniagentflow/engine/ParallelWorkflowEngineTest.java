@@ -1,5 +1,7 @@
 package com.example.miniagentflow.engine;
 
+import com.example.miniagentflow.ai.ModelChatResponse;
+import com.example.miniagentflow.ai.ModelServiceClient;
 import com.example.miniagentflow.domain.NodeType;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowEdge;
@@ -20,12 +22,20 @@ import org.junit.jupiter.api.Test;
 
 class ParallelWorkflowEngineTest {
 
+    private final ModelServiceClient modelServiceClient = request -> ModelChatResponse.builder()
+            .conversationId(request.getConversationId())
+            .provider("MOCK")
+            .mock(true)
+            .memorySize(0)
+            .content("LLM_RESPONSE: " + request.getUserText())
+            .build();
+
     @Test
     void shouldRunParallelWorkflowForIndependentNodes() {
         VariableResolver variableResolver = new VariableResolver();
         NodeExecutorRegistry registry = new NodeExecutorRegistry(List.of(
                 new StartNodeExecutor(variableResolver),
-                new LlmNodeExecutor(variableResolver),
+                new LlmNodeExecutor(variableResolver, modelServiceClient),
                 new PluginNodeExecutor(variableResolver),
                 new EndNodeExecutor(variableResolver)
         ));
@@ -145,7 +155,13 @@ class ParallelWorkflowEngineTest {
         private final Set<String> executionIds;
 
         TtlAwareLlmNodeExecutor(VariableResolver variableResolver, Set<String> executionIds) {
-            super(variableResolver);
+            super(variableResolver, request -> ModelChatResponse.builder()
+                    .conversationId(request.getConversationId())
+                    .provider("MOCK")
+                    .mock(true)
+                    .memorySize(0)
+                    .content("LLM_RESPONSE: " + request.getUserText())
+                    .build());
             this.executionIds = executionIds;
         }
 
@@ -170,7 +186,13 @@ class ParallelWorkflowEngineTest {
         private final Set<String> failNodeIds;
 
         FailOnNodeLlmExecutor(VariableResolver variableResolver, Set<String> failNodeIds) {
-            super(variableResolver);
+            super(variableResolver, request -> ModelChatResponse.builder()
+                    .conversationId(request.getConversationId())
+                    .provider("MOCK")
+                    .mock(true)
+                    .memorySize(0)
+                    .content("LLM_RESPONSE: " + request.getUserText())
+                    .build());
             this.failNodeIds = failNodeIds;
         }
 

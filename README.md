@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D7）
+## 当前已完成（D1-D8）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -24,6 +24,11 @@
 - SSE 流式执行接口：`POST /api/workflow/stream`
 - 基于 `SseEmitter` 的实时事件推送：节点执行事件会边执行边推送
 - REST API：`POST /api/workflow/execute`
+- Spring AI 模型抽象：`ModelServiceClient`
+- Prompt 模板解析：`PromptTemplate` + `SystemPromptTemplate`
+- 多轮历史窗口：`MessageWindowChatMemory`
+- 独立对话接口：`POST /api/chat/complete`
+- 默认 Mock LLM 模式：不配置 API Key 也能本地运行
 - 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证、SSE 服务验证
 
 ## 快速启动
@@ -34,6 +39,19 @@ mvn spring-boot:run
 ```
 
 服务端口：`18080`
+
+默认以 Mock LLM 模式启动，不需要配置模型密钥。
+
+如果要切到 OpenAI 兼容模型（例如 DeepSeek），可以在 PowerShell 里这样设置：
+
+```powershell
+$env:MINIAGENTFLOW_AI_MOCK_ENABLED="false"
+$env:SPRING_AI_MODEL_CHAT="openai"
+$env:SPRING_AI_OPENAI_BASE_URL="https://api.deepseek.com"
+$env:SPRING_AI_OPENAI_API_KEY="你的Key"
+$env:SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL="deepseek-chat"
+mvn spring-boot:run
+```
 
 ## 调试请求示例
 
@@ -80,6 +98,22 @@ curl -N -X POST http://localhost:18080/api/workflow/stream \
         {"from": "start", "to": "llm"},
         {"from": "llm", "to": "end"}
       ]
+    }
+  }'
+```
+
+## Chat 调试示例
+
+```bash
+curl -X POST http://localhost:18080/api/chat/complete \
+  -H "Content-Type: application/json" \
+  -d '{
+    "conversationId": "resume-demo-1",
+    "systemPrompt": "你是一个资深 Java 面试官，请用简历项目亮点的口吻回答",
+    "promptTemplate": "请围绕 {project} 回答下面这个问题：{input}",
+    "userInput": "这个项目最值得讲的三点是什么？",
+    "templateVariables": {
+      "project": "mini-agentflow"
     }
   }'
 ```

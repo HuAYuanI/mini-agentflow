@@ -1,5 +1,7 @@
 package com.example.miniagentflow.engine;
 
+import com.example.miniagentflow.ai.ModelChatResponse;
+import com.example.miniagentflow.ai.ModelServiceClient;
 import com.example.miniagentflow.domain.NodeType;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowEdge;
@@ -18,12 +20,20 @@ import org.junit.jupiter.api.Test;
 
 class SerialWorkflowEngineTest {
 
+    private final ModelServiceClient modelServiceClient = request -> ModelChatResponse.builder()
+            .conversationId(request.getConversationId())
+            .provider("MOCK")
+            .mock(true)
+            .memorySize(0)
+            .content("LLM_RESPONSE: " + request.getUserText())
+            .build();
+
     @Test
     void shouldRunLinearWorkflow() {
         VariableResolver variableResolver = new VariableResolver();
         NodeExecutorRegistry registry = new NodeExecutorRegistry(List.of(
                 new StartNodeExecutor(variableResolver),
-                new LlmNodeExecutor(variableResolver),
+                new LlmNodeExecutor(variableResolver, modelServiceClient),
                 new PluginNodeExecutor(variableResolver),
                 new EndNodeExecutor(variableResolver)
         ));
@@ -56,7 +66,7 @@ class SerialWorkflowEngineTest {
         VariableResolver variableResolver = new VariableResolver();
         NodeExecutorRegistry registry = new NodeExecutorRegistry(List.of(
                 new StartNodeExecutor(variableResolver),
-                new LlmNodeExecutor(variableResolver),
+                new LlmNodeExecutor(variableResolver, modelServiceClient),
                 new PluginNodeExecutor(variableResolver),
                 new EndNodeExecutor(variableResolver)
         ));
@@ -121,7 +131,7 @@ class SerialWorkflowEngineTest {
         VariableResolver variableResolver = new VariableResolver();
         NodeExecutorRegistry registry = new NodeExecutorRegistry(List.of(
                 new StartNodeExecutor(variableResolver),
-                new LlmNodeExecutor(variableResolver),
+                new LlmNodeExecutor(variableResolver, modelServiceClient),
                 new EndNodeExecutor(variableResolver)
         ));
         SerialWorkflowEngine engine = new SerialWorkflowEngine(new WorkflowValidator(variableResolver), registry);
@@ -189,7 +199,13 @@ class SerialWorkflowEngineTest {
         private final int failBeforeSuccess;
 
         FlakyLlmNodeExecutor(VariableResolver variableResolver, AtomicInteger attempts, int failBeforeSuccess) {
-            super(variableResolver);
+            super(variableResolver, request -> ModelChatResponse.builder()
+                    .conversationId(request.getConversationId())
+                    .provider("MOCK")
+                    .mock(true)
+                    .memorySize(0)
+                    .content("LLM_RESPONSE: " + request.getUserText())
+                    .build());
             this.attempts = attempts;
             this.failBeforeSuccess = failBeforeSuccess;
         }
@@ -207,7 +223,13 @@ class SerialWorkflowEngineTest {
     private static class AlwaysFailLlmNodeExecutor extends LlmNodeExecutor {
 
         AlwaysFailLlmNodeExecutor(VariableResolver variableResolver) {
-            super(variableResolver);
+            super(variableResolver, request -> ModelChatResponse.builder()
+                    .conversationId(request.getConversationId())
+                    .provider("MOCK")
+                    .mock(true)
+                    .memorySize(0)
+                    .content("LLM_RESPONSE: " + request.getUserText())
+                    .build());
         }
 
         @Override
