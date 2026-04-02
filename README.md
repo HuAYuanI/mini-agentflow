@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D8）
+## 当前已完成（D1-D9）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -29,6 +29,10 @@
 - 多轮历史窗口：`MessageWindowChatMemory`
 - 独立对话接口：`POST /api/chat/complete`
 - 默认 Mock LLM 模式：不配置 API Key 也能本地运行
+- 分布式锁注解：`@DistributedLock`
+- AOP + SpEL 动态锁解析：支持 `lockKey / lockType / waitTime / leaseTime`
+- 锁类型支持：`REENTRANT / FAIR / READ / WRITE`
+- Local/Redisson 双实现：默认本地可跑，切配置后可走 Redisson
 - 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证、SSE 服务验证
 
 ## 快速启动
@@ -53,6 +57,14 @@ $env:SPRING_AI_OPENAI_CHAT_OPTIONS_MODEL="deepseek-chat"
 mvn spring-boot:run
 ```
 
+如果要切到 Redisson 分布式锁，可以这样设置：
+
+```powershell
+$env:MINIAGENTFLOW_LOCK_PROVIDER="redisson"
+$env:MINIAGENTFLOW_LOCK_REDISSON_ADDRESS="redis://127.0.0.1:6379"
+mvn spring-boot:run
+```
+
 ## 调试请求示例
 
 ```bash
@@ -60,6 +72,10 @@ curl -X POST http://localhost:18080/api/workflow/execute \
   -H "Content-Type: application/json" \
   -d '{
     "engineMode": "PARALLEL",
+    "lockKey": "resume-workflow-1",
+    "lockType": "FAIR",
+    "lockWaitTimeMs": 100,
+    "lockLeaseTimeMs": 30000,
     "inputs": {"input": "你好，做一段简历项目介绍"},
     "workflow": {
       "nodes": [
@@ -115,8 +131,17 @@ curl -X POST http://localhost:18080/api/chat/complete \
     "templateVariables": {
       "project": "mini-agentflow"
     }
-  }'
+}'
 ```
+
+## D9 锁设计说明
+
+- 控制层请求体新增了可选锁字段：`lockKey`、`lockType`、`lockWaitTimeMs`、`lockLeaseTimeMs`
+- 当 `lockKey` 为空时，工作流按原逻辑直接执行
+- 当 `lockKey` 不为空时，会进入 `WorkflowExecutionService -> LockedWorkflowExecutionService`
+- `LockedWorkflowExecutionService` 通过 `@DistributedLock` 结合 SpEL 动态生成锁配置
+- 默认使用 `LocalDistributedLockClient`，方便本地开发与测试
+- 当 `miniagentflow.lock.provider=redisson` 时，自动切到 `RedissonDistributedLockClient`
 
 ## 10 天冲刺路线
 

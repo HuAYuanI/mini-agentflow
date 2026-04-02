@@ -27,19 +27,19 @@ class WorkflowSseServiceTest {
 
     @Test
     void shouldStreamLifecycleEventsAndFinalResult() {
-        WorkflowOrchestratorService workflowOrchestratorService = mock(WorkflowOrchestratorService.class);
+        WorkflowExecutionService workflowExecutionService = mock(WorkflowExecutionService.class);
         RecordingWorkflowSseEventSender sender = new RecordingWorkflowSseEventSender();
         WorkflowSseEventSenderFactory factory = emitter -> sender;
         Executor directExecutor = Runnable::run;
         WorkflowSseService workflowSseService =
-                new WorkflowSseService(workflowOrchestratorService, factory, directExecutor);
+                new WorkflowSseService(workflowExecutionService, factory, directExecutor);
 
         WorkflowRunResult workflowRunResult = WorkflowRunResult.builder()
                 .status("SUCCESS")
                 .build();
 
         doAnswer(invocation -> {
-            WorkflowEventListener eventListener = invocation.getArgument(3);
+            WorkflowEventListener eventListener = invocation.getArgument(1);
             eventListener.onEvent(WorkflowExecutionEvent.builder()
                     .sequence(1L)
                     .timestamp(System.currentTimeMillis())
@@ -49,7 +49,7 @@ class WorkflowSseServiceTest {
                     .message("Workflow execution started")
                     .build());
             return workflowRunResult;
-        }).when(workflowOrchestratorService).execute(any(), anyMap(), any(), any());
+        }).when(workflowExecutionService).execute(any(), any());
 
         SseEmitter emitter = workflowSseService.streamExecute(buildRequest());
 
@@ -63,14 +63,14 @@ class WorkflowSseServiceTest {
 
     @Test
     void shouldSendErrorEventWhenWorkflowExecutionFails() {
-        WorkflowOrchestratorService workflowOrchestratorService = mock(WorkflowOrchestratorService.class);
+        WorkflowExecutionService workflowExecutionService = mock(WorkflowExecutionService.class);
         RecordingWorkflowSseEventSender sender = new RecordingWorkflowSseEventSender();
         WorkflowSseEventSenderFactory factory = emitter -> sender;
         Executor directExecutor = Runnable::run;
         WorkflowSseService workflowSseService =
-                new WorkflowSseService(workflowOrchestratorService, factory, directExecutor);
+                new WorkflowSseService(workflowExecutionService, factory, directExecutor);
 
-        when(workflowOrchestratorService.execute(any(), anyMap(), any(), any()))
+        when(workflowExecutionService.execute(any(), any()))
                 .thenThrow(new RuntimeException("stream failed"));
 
         workflowSseService.streamExecute(buildRequest());

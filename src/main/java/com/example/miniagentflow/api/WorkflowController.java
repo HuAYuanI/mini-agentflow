@@ -2,7 +2,7 @@ package com.example.miniagentflow.api;
 
 import com.example.miniagentflow.api.dto.WorkflowExecuteRequest;
 import com.example.miniagentflow.domain.WorkflowRunResult;
-import com.example.miniagentflow.service.WorkflowOrchestratorService;
+import com.example.miniagentflow.service.WorkflowExecutionService;
 import com.example.miniagentflow.service.WorkflowSseService;
 import jakarta.validation.Valid;
 import org.springframework.http.MediaType;
@@ -16,18 +16,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @RequestMapping("/api/workflow")
 public class WorkflowController {
 
-    private final WorkflowOrchestratorService workflowOrchestratorService;
+    private final WorkflowExecutionService workflowExecutionService;
     private final WorkflowSseService workflowSseService;
 
-    public WorkflowController(WorkflowOrchestratorService workflowOrchestratorService,
+    public WorkflowController(WorkflowExecutionService workflowExecutionService,
             WorkflowSseService workflowSseService) {
-        this.workflowOrchestratorService = workflowOrchestratorService;
+        this.workflowExecutionService = workflowExecutionService;
         this.workflowSseService = workflowSseService;
     }
 
     @PostMapping("/execute")
     public WorkflowRunResult execute(@Valid @RequestBody WorkflowExecuteRequest request) {
-        return workflowOrchestratorService.execute(request.getWorkflow(), request.getInputs(), request.getEngineMode());
+        return workflowExecutionService.execute(request);
     }
 
     @PostMapping(value = "/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

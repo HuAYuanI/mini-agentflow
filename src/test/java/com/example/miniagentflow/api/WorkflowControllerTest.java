@@ -7,7 +7,7 @@ import com.example.miniagentflow.api.dto.WorkflowExecuteRequest;
 import com.example.miniagentflow.domain.EngineMode;
 import com.example.miniagentflow.domain.WorkflowDefinition;
 import com.example.miniagentflow.domain.WorkflowRunResult;
-import com.example.miniagentflow.service.WorkflowOrchestratorService;
+import com.example.miniagentflow.service.WorkflowExecutionService;
 import com.example.miniagentflow.service.WorkflowSseService;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -17,13 +17,13 @@ class WorkflowControllerTest {
 
     @Test
     void shouldDelegateExecuteRequest() {
-        WorkflowOrchestratorService workflowOrchestratorService = mock(WorkflowOrchestratorService.class);
+        WorkflowExecutionService workflowExecutionService = mock(WorkflowExecutionService.class);
         WorkflowSseService workflowSseService = mock(WorkflowSseService.class);
-        WorkflowController workflowController = new WorkflowController(workflowOrchestratorService, workflowSseService);
+        WorkflowController workflowController = new WorkflowController(workflowExecutionService, workflowSseService);
         WorkflowExecuteRequest request = buildRequest();
         WorkflowRunResult expected = WorkflowRunResult.builder().status("SUCCESS").build();
 
-        when(workflowOrchestratorService.execute(request.getWorkflow(), request.getInputs(), request.getEngineMode()))
+        when(workflowExecutionService.execute(request))
                 .thenReturn(expected);
 
         WorkflowRunResult actual = workflowController.execute(request);
@@ -32,9 +32,9 @@ class WorkflowControllerTest {
 
     @Test
     void shouldDelegateStreamRequest() {
-        WorkflowOrchestratorService workflowOrchestratorService = mock(WorkflowOrchestratorService.class);
+        WorkflowExecutionService workflowExecutionService = mock(WorkflowExecutionService.class);
         WorkflowSseService workflowSseService = mock(WorkflowSseService.class);
-        WorkflowController workflowController = new WorkflowController(workflowOrchestratorService, workflowSseService);
+        WorkflowController workflowController = new WorkflowController(workflowExecutionService, workflowSseService);
         WorkflowExecuteRequest request = buildRequest();
         SseEmitter emitter = new SseEmitter();
 

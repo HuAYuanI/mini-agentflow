@@ -17,3 +17,5 @@ miniagentflow:
     mock-enabled: true
     default-system-prompt: 你是一个擅长 Java 后端、工作流和 Agent 系统设计的助手。
     memory-window: 8
+  lock:
+    provider: local

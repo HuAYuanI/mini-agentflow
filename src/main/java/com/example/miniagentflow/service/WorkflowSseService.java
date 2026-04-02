@@ -15,19 +15,19 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 @Service
 public class WorkflowSseService {
 
-    private final WorkflowOrchestratorService workflowOrchestratorService;
+    private final WorkflowExecutionService workflowExecutionService;
     private final WorkflowSseEventSenderFactory workflowSseEventSenderFactory;
     private final Executor workflowStreamExecutor;
 
-    public WorkflowSseService(WorkflowOrchestratorService workflowOrchestratorService,
+    public WorkflowSseService(WorkflowExecutionService workflowExecutionService,
             WorkflowSseEventSenderFactory workflowSseEventSenderFactory) {
-        this(workflowOrchestratorService, workflowSseEventSenderFactory, createDefaultExecutor());
+        this(workflowExecutionService, workflowSseEventSenderFactory, createDefaultExecutor());
     }
 
-    WorkflowSseService(WorkflowOrchestratorService workflowOrchestratorService,
+    WorkflowSseService(WorkflowExecutionService workflowExecutionService,
             WorkflowSseEventSenderFactory workflowSseEventSenderFactory,
             Executor workflowStreamExecutor) {
-        this.workflowOrchestratorService = workflowOrchestratorService;
+        this.workflowExecutionService = workflowExecutionService;
         this.workflowSseEventSenderFactory = workflowSseEventSenderFactory;
         this.workflowStreamExecutor = workflowStreamExecutor;
     }
@@ -44,11 +44,7 @@ public class WorkflowSseService {
             WorkflowSseEventSender sender,
             WorkflowEventListener eventListener) {
         try {
-            WorkflowRunResult result = workflowOrchestratorService.execute(
-                    request.getWorkflow(),
-                    request.getInputs(),
-                    request.getEngineMode(),
-                    eventListener);
+            WorkflowRunResult result = workflowExecutionService.execute(request, eventListener);
             sender.sendResult(result);
             sender.complete();
         } catch (Exception exception) {
