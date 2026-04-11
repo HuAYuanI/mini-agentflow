@@ -1,0 +1,255 @@
+﻿<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mini-AgentFlow Demo</title>
+    <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<div class="page-shell">
+    <header class="hero">
+        <div class="hero-copy surface reveal">
+            <p class="eyebrow">Mini-AgentFlow</p>
+            <h1>一个能演示工作流、流式事件、Spring AI 与分布式锁的 Java Agent 项目</h1>
+            <p class="hero-text">
+                这个页面直接调用当前 Spring Boot 服务的后端接口，适合你在面试时边讲解边演示
+                DAG 引擎、SSE 生命周期推送、Prompt 模板、多轮记忆以及锁控执行。
+            </p>
+            <div class="hero-actions">
+                <button class="ghost-button" data-scroll-target="workflow-section">看工作流执行</button>
+                <button class="ghost-button" data-scroll-target="chat-section">看 Chat 能力</button>
+            </div>
+        </div>
+        <div class="hero-metrics reveal">
+            <article class="metric-card surface">
+                <span class="metric-label">Engine</span>
+                <strong class="metric-value">DAG + Parallel</strong>
+                <span class="metric-detail">Kahn / CompletableFuture / TTL</span>
+            </article>
+            <article class="metric-card surface">
+                <span class="metric-label">Streaming</span>
+                <strong class="metric-value">SSE Timeline</strong>
+                <span class="metric-detail">节点事件实时推送</span>
+            </article>
+            <article class="metric-card surface">
+                <span class="metric-label">AI Layer</span>
+                <strong class="metric-value">Spring AI</strong>
+                <span class="metric-detail">Prompt 模板与记忆窗口</span>
+            </article>
+            <article class="metric-card surface accent-card">
+                <span class="metric-label">Concurrency</span>
+                <strong class="metric-value">Lock + AOP</strong>
+                <span class="metric-detail">SpEL 动态锁参数</span>
+            </article>
+        </div>
+    </header>
+
+    <main class="dashboard">
+        <section class="panel-grid" id="workflow-section">
+            <section class="surface section-card reveal span-7">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Workflow Studio</p>
+                        <h2>工作流执行台</h2>
+                    </div>
+                    <div class="preset-row">
+                        <button class="chip-button" data-preset="parallel">并行预设</button>
+                        <button class="chip-button" data-preset="stream">流式预设</button>
+                        <button class="chip-button" data-preset="lock">锁控预设</button>
+                    </div>
+                </div>
+
+                <form id="workflow-form" class="stack-form">
+                    <div class="form-row two-columns">
+                        <label>
+                            <span>执行模式</span>
+                            <select id="engine-mode">
+                                <option value="PARALLEL">PARALLEL</option>
+                                <option value="SERIAL">SERIAL</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>输入文本</span>
+                            <input id="workflow-input" type="text" value="请帮我生成一段适合简历介绍的 Agent 项目亮点">
+                        </label>
+                    </div>
+
+                    <div class="form-row four-columns">
+                        <label>
+                            <span>lockKey</span>
+                            <input id="lock-key" type="text" placeholder="可选，留空则不加锁">
+                        </label>
+                        <label>
+                            <span>lockType</span>
+                            <select id="lock-type">
+                                <option value="REENTRANT">REENTRANT</option>
+                                <option value="FAIR">FAIR</option>
+                                <option value="READ">READ</option>
+                                <option value="WRITE">WRITE</option>
+                            </select>
+                        </label>
+                        <label>
+                            <span>waitTimeMs</span>
+                            <input id="lock-wait" type="number" min="0" step="1" placeholder="100">
+                        </label>
+                        <label>
+                            <span>leaseTimeMs</span>
+                            <input id="lock-lease" type="number" min="0" step="1" placeholder="30000">
+                        </label>
+                    </div>
+
+                    <label class="full-width">
+                        <span>工作流 JSON</span>
+                        <textarea id="workflow-json" spellcheck="false"></textarea>
+                    </label>
+
+                    <div class="action-row">
+                        <button type="button" class="primary-button" id="run-workflow-btn">同步执行</button>
+                        <button type="button" class="secondary-button" id="stream-workflow-btn">流式执行</button>
+                        <button type="button" class="ghost-button" id="reset-workflow-btn">恢复默认</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="surface section-card reveal span-5">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Execution Lens</p>
+                        <h2>执行结果</h2>
+                    </div>
+                    <span class="status-chip" id="workflow-status-chip">等待执行</span>
+                </div>
+
+                <div class="result-grid">
+                    <article class="result-card tinted-card">
+                        <span class="result-label">最终状态</span>
+                        <strong id="workflow-status-value">-</strong>
+                    </article>
+                    <article class="result-card tinted-card">
+                        <span class="result-label">Node 数量</span>
+                        <strong id="workflow-node-count">0</strong>
+                    </article>
+                    <article class="result-card tinted-card">
+                        <span class="result-label">事件数量</span>
+                        <strong id="workflow-event-count">0</strong>
+                    </article>
+                    <article class="result-card tinted-card">
+                        <span class="result-label">锁控执行</span>
+                        <strong id="workflow-lock-state">未启用</strong>
+                    </article>
+                </div>
+
+                <div class="output-block">
+                    <div class="output-head">
+                        <h3>同步结果</h3>
+                        <button class="text-button" type="button" id="copy-result-btn">复制 JSON</button>
+                    </div>
+                    <pre id="workflow-result-output">等待请求...</pre>
+                </div>
+            </section>
+        </section>
+
+        <section class="panel-grid">
+            <section class="surface section-card reveal span-12">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">SSE Timeline</p>
+                        <h2>流式事件时间线</h2>
+                    </div>
+                    <div class="timeline-legend">
+                        <span class="legend-dot workflow-dot"></span>
+                        <span>生命周期事件</span>
+                    </div>
+                </div>
+                <div class="timeline" id="event-timeline">
+                    <div class="timeline-empty">点击“流式执行”后，这里会实时出现工作流事件。</div>
+                </div>
+            </section>
+        </section>
+
+        <section class="panel-grid" id="chat-section">
+            <section class="surface section-card reveal span-6">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Chat Playground</p>
+                        <h2>Prompt 与记忆窗口</h2>
+                    </div>
+                    <button class="chip-button" type="button" id="reset-chat-btn">重置示例</button>
+                </div>
+
+                <form id="chat-form" class="stack-form">
+                    <div class="form-row two-columns">
+                        <label>
+                            <span>conversationId</span>
+                            <input id="chat-conversation-id" type="text" value="resume-demo-1">
+                        </label>
+                        <label>
+                            <span>project</span>
+                            <input id="chat-project-name" type="text" value="mini-agentflow">
+                        </label>
+                    </div>
+
+                    <label>
+                        <span>systemPrompt</span>
+                        <textarea id="chat-system-prompt" spellcheck="false"></textarea>
+                    </label>
+
+                    <label>
+                        <span>promptTemplate</span>
+                        <textarea id="chat-prompt-template" spellcheck="false"></textarea>
+                    </label>
+
+                    <label>
+                        <span>userInput</span>
+                        <textarea id="chat-user-input" spellcheck="false"></textarea>
+                    </label>
+
+                    <div class="action-row">
+                        <button type="button" class="primary-button" id="run-chat-btn">发送 Chat 请求</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="surface section-card reveal span-6">
+                <div class="section-head">
+                    <div>
+                        <p class="eyebrow">Response</p>
+                        <h2>对话结果</h2>
+                    </div>
+                    <span class="status-chip" id="chat-status-chip">未发送</span>
+                </div>
+
+                <div class="result-grid">
+                    <article class="result-card soft-card">
+                        <span class="result-label">Provider</span>
+                        <strong id="chat-provider">-</strong>
+                    </article>
+                    <article class="result-card soft-card">
+                        <span class="result-label">Mock</span>
+                        <strong id="chat-mock-state">-</strong>
+                    </article>
+                    <article class="result-card soft-card">
+                        <span class="result-label">Memory Size</span>
+                        <strong id="chat-memory-size">0</strong>
+                    </article>
+                    <article class="result-card soft-card">
+                        <span class="result-label">Conversation</span>
+                        <strong id="chat-conversation-value">-</strong>
+                    </article>
+                </div>
+
+                <div class="output-block chat-output">
+                    <div class="output-head">
+                        <h3>模型回答</h3>
+                    </div>
+                    <div id="chat-content-output" class="rich-output">等待请求...</div>
+                </div>
+            </section>
+        </section>
+    </main>
+</div>
+
+<script src="/app.js"></script>
+</body>
+</html>

@@ -2,7 +2,7 @@
 
 一个面向 Java 后端/Agent 方向的精简工作流项目，用于简历与面试演示。
 
-## 当前已完成（D1-D9）
+## 当前已完成（D1-D10）
 
 - DAG 工作流定义模型
 - Kahn 拓扑排序 + 环检测
@@ -33,6 +33,7 @@
 - AOP + SpEL 动态锁解析：支持 `lockKey / lockType / waitTime / leaseTime`
 - 锁类型支持：`REENTRANT / FAIR / READ / WRITE`
 - Local/Redisson 双实现：默认本地可跑，切配置后可走 Redisson
+- 单页 Demo UI：内嵌 Spring Boot 静态资源，覆盖工作流执行、SSE 时间线、Chat 调试
 - 单元测试：环检测、线性链路执行、变量引用解析、非法引用拦截、并行执行验证、TTL 传递验证、失败策略验证、事件标准化验证、SSE 服务验证
 
 ## 快速启动
@@ -43,6 +44,12 @@ mvn spring-boot:run
 ```
 
 服务端口：`18080`
+
+启动后直接打开：
+
+- Demo UI: `http://localhost:18080/`
+- Workflow API: `http://localhost:18080/api/workflow/execute`
+- Chat API: `http://localhost:18080/api/chat/complete`
 
 默认以 Mock LLM 模式启动，不需要配置模型密钥。
 
@@ -143,6 +150,14 @@ curl -X POST http://localhost:18080/api/chat/complete \
 - 默认使用 `LocalDistributedLockClient`，方便本地开发与测试
 - 当 `miniagentflow.lock.provider=redisson` 时，自动切到 `RedissonDistributedLockClient`
 
+## D10 Demo UI
+
+- 根路径 `/` 提供一个单页演示界面
+- 左侧是工作流执行台：支持切换预设、编辑 workflow JSON、配置锁参数
+- 中间/右侧展示同步结果、流式时间线、节点事件与最终输出
+- 页面下半部分提供 Chat 调试区：演示 Prompt 模板、多轮会话与模型返回
+- 整个页面不依赖独立前端工程，跟随 Spring Boot 一起启动即可
+
 ## 10 天冲刺路线
 
 - D1-D2：串行执行引擎 + DAG 校验 + 模式解耦
@@ -153,3 +168,4 @@ curl -X POST http://localhost:18080/api/chat/complete \
 - D7：SSE 全链路生命周期事件推送
 - D8：Spring AI + Prompt 模板 + 历史窗口
 - D9：`@DistributedLock` + AOP + SpEL + 简历沉淀
+- D10：Demo UI + 项目展示页
