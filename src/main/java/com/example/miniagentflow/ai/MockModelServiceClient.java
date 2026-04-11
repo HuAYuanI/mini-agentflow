@@ -4,12 +4,8 @@ import java.util.Deque;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentLinkedDeque;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
-@ConditionalOnMissingBean(ModelServiceClient.class)
 public class MockModelServiceClient implements ModelServiceClient {
 
     private final AgentflowAiProperties agentflowAiProperties;

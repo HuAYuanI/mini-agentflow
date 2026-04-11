@@ -5,13 +5,7 @@ import java.util.concurrent.locks.Lock;
 import org.redisson.api.RLock;
 import org.redisson.api.RReadWriteLock;
 import org.redisson.api.RedissonClient;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnBean(RedissonClient.class)
-@ConditionalOnProperty(prefix = "miniagentflow.lock", name = "provider", havingValue = "redisson")
 public class RedissonDistributedLockClient implements DistributedLockClient {
 
     private final RedissonClient redissonClient;

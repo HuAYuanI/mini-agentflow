@@ -22,6 +22,7 @@ import java.util.Map;
 import java.util.Queue;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -31,13 +32,14 @@ public class SerialWorkflowEngine {
     private final NodeExecutorRegistry nodeExecutorRegistry;
     private final NodeErrorStrategySelector nodeErrorStrategySelector;
 
+    @Autowired
     public SerialWorkflowEngine(WorkflowValidator workflowValidator, NodeExecutorRegistry nodeExecutorRegistry) {
         this(workflowValidator, nodeExecutorRegistry, new NodeErrorStrategySelector());
     }
 
     public SerialWorkflowEngine(WorkflowValidator workflowValidator,
-                                NodeExecutorRegistry nodeExecutorRegistry,
-                                NodeErrorStrategySelector nodeErrorStrategySelector) {
+            NodeExecutorRegistry nodeExecutorRegistry,
+            NodeErrorStrategySelector nodeErrorStrategySelector) {
         this.workflowValidator = workflowValidator;
         this.nodeExecutorRegistry = nodeExecutorRegistry;
         this.nodeErrorStrategySelector = nodeErrorStrategySelector;
@@ -134,8 +136,8 @@ public class SerialWorkflowEngine {
     }
 
     private void releaseNextNodes(List<String> nextNodes,
-                                  Map<String, AtomicInteger> remainingDeps,
-                                  Queue<String> readyQueue) {
+            Map<String, AtomicInteger> remainingDeps,
+            Queue<String> readyQueue) {
         if (nextNodes == null) {
             return;
         }

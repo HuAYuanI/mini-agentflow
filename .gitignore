@@ -17,3 +17,6 @@ Thumbs.db
 
 # Env
 .env
+
+# Local Maven repo
+/.m2repo/

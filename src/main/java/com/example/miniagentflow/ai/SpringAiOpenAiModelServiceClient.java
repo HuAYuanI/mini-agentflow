@@ -5,14 +5,8 @@ import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.messages.Message;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-@Service
-@ConditionalOnBean(ChatClient.Builder.class)
-@ConditionalOnProperty(prefix = "miniagentflow.ai", name = "mock-enabled", havingValue = "false")
 public class SpringAiOpenAiModelServiceClient implements ModelServiceClient {
 
     private final ChatClient chatClient;

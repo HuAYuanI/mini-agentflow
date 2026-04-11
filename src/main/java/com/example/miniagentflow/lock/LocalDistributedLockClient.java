@@ -6,11 +6,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
-import org.springframework.stereotype.Component;
 
-@Component
-@ConditionalOnMissingBean(DistributedLockClient.class)
 public class LocalDistributedLockClient implements DistributedLockClient {
 
     private final Map<String, ReentrantLock> reentrantLocks = new ConcurrentHashMap<>();

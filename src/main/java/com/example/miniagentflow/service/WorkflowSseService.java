@@ -8,6 +8,7 @@ import com.example.miniagentflow.domain.WorkflowRunResult;
 import com.example.miniagentflow.engine.event.WorkflowEventListener;
 import java.io.IOException;
 import java.util.concurrent.Executor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.task.SimpleAsyncTaskExecutor;
 import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
@@ -19,6 +20,7 @@ public class WorkflowSseService {
     private final WorkflowSseEventSenderFactory workflowSseEventSenderFactory;
     private final Executor workflowStreamExecutor;
 
+    @Autowired
     public WorkflowSseService(WorkflowExecutionService workflowExecutionService,
             WorkflowSseEventSenderFactory workflowSseEventSenderFactory) {
         this(workflowExecutionService, workflowSseEventSenderFactory, createDefaultExecutor());
